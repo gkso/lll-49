@@ -87,6 +87,8 @@
 #include <asm/setup.h>
 #include <asm/sections.h>
 #include <asm/cacheflush.h>
+#include <asm/cpufeature.h>
+#include <asm/cpufeatures.h>
 
 static int kernel_init(void *);
 

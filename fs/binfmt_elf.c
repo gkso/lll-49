@@ -40,6 +40,11 @@
 #include <asm/param.h>
 #include <asm/page.h>
 
+#ifdef CONFIG_S2E
+#include <s2e/s2e.h>
+#include <s2e/linux/linux_monitor.h>
+#endif
+
 #ifndef user_long_t
 #define user_long_t long
 #endif
@@ -1092,6 +1097,19 @@ static int load_elf_binary(struct linux_binprm *bprm)
 out:
 	kfree(loc);
 out_ret:
+#ifdef CONFIG_S2E
+	if (s2e_linux_monitor_enabled) {
+#ifdef CONFIG_DEBUG_S2E
+		s2e_printf("detected ELF load %s\n", bprm->interp);
+#endif
+		s2e_linux_process_load(current->pid,
+			current->comm,
+			current,
+			bprm->interp,
+			elf_entry);
+	}
+#endif
+
 	return retval;
 
 	/* error cleanup */
