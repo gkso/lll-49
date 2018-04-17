@@ -27,6 +27,8 @@
 #include <net/inet_common.h>
 #include <net/xfrm.h>
 
+#include "funcptr_rewrite.h"
+
 int sysctl_tcp_abort_on_overflow __read_mostly;
 
 struct inet_timewait_death_row tcp_death_row = {
@@ -710,7 +712,7 @@ struct sock *tcp_check_req(struct sock *sk, struct sk_buff *skb,
 		    !tcp_oow_rate_limited(sock_net(sk), skb,
 					  LINUX_MIB_TCPACKSKIPPEDSYNRECV,
 					  &tcp_rsk(req)->last_oow_ack_time))
-			req->rsk_ops->send_ack(sk, skb, req);
+			tcp_v4_reqsk_send_ack(sk, skb, req);
 		if (paws_reject)
 			__NET_INC_STATS(sock_net(sk), LINUX_MIB_PAWSESTABREJECTED);
 		return NULL;
@@ -764,7 +766,7 @@ struct sock *tcp_check_req(struct sock *sk, struct sk_buff *skb,
 	 * ESTABLISHED STATE. If it will be dropped after
 	 * socket is created, wait for troubles.
 	 */
-	child = inet_csk(sk)->icsk_af_ops->syn_recv_sock(sk, skb, req, NULL,
+	child = tcp_v4_syn_recv_sock(sk, skb, req, NULL,
 							 req, &own_req);
 	if (!child)
 		goto listen_overflow;
@@ -786,7 +788,7 @@ embryonic_reset:
 		 * avoid becoming vulnerable to outside attack aiming at
 		 * resetting legit local connections.
 		 */
-		req->rsk_ops->send_reset(sk, skb);
+		tcp_v4_send_reset(sk, skb);
 	} else if (fastopen) { /* received a valid RST pkt */
 		reqsk_fastopen_remove(sk, req, true);
 		tcp_reset(sk);

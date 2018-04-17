@@ -220,7 +220,7 @@ struct sock *tcp_get_cookie_sock(struct sock *sk, struct sk_buff *skb,
 	struct sock *child;
 	bool own_req;
 
-	child = icsk->icsk_af_ops->syn_recv_sock(sk, skb, req, dst,
+	child = tcp_v4_syn_recv_sock(sk, skb, req, dst,
 						 NULL, &own_req);
 	if (child) {
 		atomic_set(&req->rsk_refcnt, 1);

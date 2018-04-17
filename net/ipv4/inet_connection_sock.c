@@ -501,7 +501,7 @@ static inline void syn_ack_recalc(struct request_sock *req, const int thresh,
 
 int inet_rtx_syn_ack(const struct sock *parent, struct request_sock *req)
 {
-	int err = req->rsk_ops->rtx_syn_ack(parent, req);
+	int err = tcp_rtx_synack(parent, req);
 
 	if (!err)
 		req->num_retrans++;
@@ -699,7 +699,7 @@ void inet_csk_destroy_sock(struct sock *sk)
 	/* If it has not 0 inet_sk(sk)->inet_num, it must be bound */
 	WARN_ON(inet_sk(sk)->inet_num && !inet_csk(sk)->icsk_bind_hash);
 
-	sk->sk_prot->destroy(sk);
+	tcp_v4_destroy_sock(sk);
 
 	sk_stream_kill_queues(sk);
 
@@ -767,7 +767,7 @@ EXPORT_SYMBOL_GPL(inet_csk_listen_start);
 static void inet_child_forget(struct sock *sk, struct request_sock *req,
 			      struct sock *child)
 {
-	sk->sk_prot->disconnect(child, O_NONBLOCK);
+	tcp_disconnect(child, O_NONBLOCK);
 
 	sock_orphan(child);
 

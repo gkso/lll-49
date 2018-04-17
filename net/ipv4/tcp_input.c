@@ -76,6 +76,8 @@
 #include <asm/unaligned.h>
 #include <linux/errqueue.h>
 
+#include "funcptr_rewrite.h"
+
 int sysctl_tcp_timestamps __read_mostly = 1;
 int sysctl_tcp_window_scaling __read_mostly = 1;
 int sysctl_tcp_sack __read_mostly = 1;
@@ -5375,7 +5377,7 @@ void tcp_rcv_established(struct sock *sk, struct sk_buff *skb,
 	struct tcp_sock *tp = tcp_sk(sk);
 
 	if (unlikely(!sk->sk_rx_dst))
-		inet_csk(sk)->icsk_af_ops->sk_rx_dst_set(sk, skb);
+		inet_sk_rx_dst_set(sk, skb);
 	/*
 	 *	Header prediction.
 	 *	The code loosely follows the one in the famous
@@ -5573,12 +5575,12 @@ void tcp_finish_connect(struct sock *sk, struct sk_buff *skb)
 	tcp_set_state(sk, TCP_ESTABLISHED);
 
 	if (skb) {
-		icsk->icsk_af_ops->sk_rx_dst_set(sk, skb);
+		inet_sk_rx_dst_set(sk, skb);
 		security_inet_conn_established(sk, skb);
 	}
 
 	/* Make sure socket is routed, for correct metrics.  */
-	icsk->icsk_af_ops->rebuild_header(sk);
+	inet_sk_rebuild_header(sk);
 
 	tcp_init_metrics(sk);
 
@@ -5916,7 +5918,7 @@ int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb)
 		if (th->syn) {
 			if (th->fin)
 				goto discard;
-			if (icsk->icsk_af_ops->conn_request(sk, skb) < 0)
+			if (tcp_v4_conn_request(sk, skb) < 0)
 				return 1;
 
 			consume_skb(skb);
@@ -5973,7 +5975,7 @@ int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb)
 			reqsk_fastopen_remove(sk, req, false);
 		} else {
 			/* Make sure socket is routed, for correct metrics. */
-			icsk->icsk_af_ops->rebuild_header(sk);
+			inet_sk_rebuild_header(sk);
 			tcp_init_congestion_control(sk);
 
 			tcp_mtup_init(sk);
@@ -6350,7 +6352,7 @@ int tcp_conn_request(struct request_sock_ops *rsk_ops,
 	/* Note: tcp_v6_init_req() might override ir_iif for link locals */
 	inet_rsk(req)->ir_iif = inet_request_bound_dev_if(sk, skb);
 
-	af_ops->init_req(req, sk, skb);
+	tcp_v4_init_req(req, sk, skb);
 
 	if (security_inet_conn_request(sk, skb, req))
 		goto drop_and_free;
@@ -6368,7 +6370,7 @@ int tcp_conn_request(struct request_sock_ops *rsk_ops,
 		if (tcp_death_row.sysctl_tw_recycle) {
 			bool strict;
 
-			dst = af_ops->route_req(sk, &fl, req, &strict);
+			dst = tcp_v4_route_req(sk, &fl, req, &strict);
 
 			if (dst && strict &&
 			    !tcp_peer_is_proven(req, dst, true,
@@ -6395,10 +6397,10 @@ int tcp_conn_request(struct request_sock_ops *rsk_ops,
 			goto drop_and_release;
 		}
 
-		isn = af_ops->init_seq(skb);
+		isn = tcp_v4_init_sequence(skb);
 	}
 	if (!dst) {
-		dst = af_ops->route_req(sk, &fl, req, NULL);
+		dst = tcp_v4_route_req(sk, &fl, req, NULL);
 		if (!dst)
 			goto drop_and_free;
 	}
@@ -6420,7 +6422,7 @@ int tcp_conn_request(struct request_sock_ops *rsk_ops,
 		fastopen_sk = tcp_try_fastopen(sk, skb, req, &foc, dst);
 	}
 	if (fastopen_sk) {
-		af_ops->send_synack(fastopen_sk, dst, &fl, req,
+		tcp_v4_send_synack(fastopen_sk, dst, &fl, req,
 				    &foc, TCP_SYNACK_FASTOPEN);
 		/* Add the child socket directly into the accept queue */
 		inet_csk_reqsk_queue_add(sk, req, fastopen_sk);
@@ -6431,7 +6433,7 @@ int tcp_conn_request(struct request_sock_ops *rsk_ops,
 		tcp_rsk(req)->tfo_listener = false;
 		if (!want_cookie)
 			inet_csk_reqsk_queue_hash_add(sk, req, TCP_TIMEOUT_INIT);
-		af_ops->send_synack(sk, dst, &fl, req, &foc,
+		tcp_v4_send_synack(sk, dst, &fl, req, &foc,
 				    !want_cookie ? TCP_SYNACK_NORMAL :
 						   TCP_SYNACK_COOKIE);
 		if (want_cookie) {
